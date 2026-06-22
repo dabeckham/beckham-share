@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="topbar">
+    <a class="brand" href="/">
+      <img src="/static/img/logo.svg" alt="{{ settings.brand_domain }}" height="28">
+      <span class="brand-name">{{ settings.app_name }}</span>
+    </a>
+    <nav class="topbar-actions">
+      {% if user %}
+        <a class="nav-link" href="/app">My files</a>
+        <span class="avatar" title="{{ user.email }}">{{ (user.name or user.email or '?')[0]|upper }}</span>
+        <a class="btn btn-ghost" href="/logout">Sign out</a>
+      {% else %}
+        <a class="btn btn-primary" href="/login">Log in</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <span>{{ settings.app_name }} &middot; {{ settings.brand_domain }}</span>
+  </footer>
+
+  <script src="/static/js/fingerprint.js"></script>
+  <script src="/static/js/common.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

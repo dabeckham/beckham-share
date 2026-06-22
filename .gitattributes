@@ -1,0 +1,5 @@
+# Normalize line endings: LF in the repository and on checkout, so shell
+# scripts and configs run correctly on the Linux host regardless of platform.
+* text=auto eol=lf
+*.png binary
+*.ico binary

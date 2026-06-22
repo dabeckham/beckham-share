@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}My files &middot; {{ settings.app_name }}{% endblock %}
+{% block body_class %}app{% endblock %}
+{% block content %}
+<div class="workspace">
+  <aside class="sidebar">
+    <nav>
+      <a class="side-link active" href="/app">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+        Home</a>
+      <a class="side-link" href="/app">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        All files</a>
+    </nav>
+    <div class="usage">Storage used: <strong>{{ usage }}</strong></div>
+  </aside>
+
+  <section class="filespane">
+    <div class="filespane-head">
+      <h1>My files</h1>
+      <div class="head-actions">
+        <select id="expirySelect" class="select" title="Default share expiry">
+          {% for h in expiry_options %}
+            <option value="{{ h }}" {% if h == default_expiry %}selected{% endif %}>{{ expiry_label(h) }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary" id="uploadBtn">Upload</button>
+        <input id="fileInput" type="file" multiple hidden>
+      </div>
+    </div>
+
+    <div id="dropzone" class="dropzone slim" tabindex="0">
+      <div class="dropzone-inner"><p class="dz-title">Drag files here to upload</p></div>
+      <div class="dz-progress" hidden><div class="bar"><span></span></div><p class="pct">0%</p></div>
+    </div>
+
+    <table class="filetable">
+      <thead><tr><th>Name</th><th>Size</th><th>Expires</th><th>Downloads</th><th></th></tr></thead>
+      <tbody id="fileRows">
+        {% for f in files %}
+        <tr data-id="{{ f.id }}" data-token="{{ f.token }}" data-share="{{ f.share_url }}" data-name="{{ f.filename }}">
+          <td class="cell-name"><span class="file-ico"></span>{{ f.filename }}</td>
+          <td>{{ f.size_h }}</td>
+          <td class="cell-exp">{% if f.revoked %}Revoked{% elif f.expires_at %}{{ f.expires_at[:10] }}{% else %}Never{% endif %}</td>
+          <td>{{ f.downloads }}</td>
+          <td class="cell-actions">
+            <button class="btn btn-ghost btn-sm act-share">Share</button>
+            <button class="btn btn-ghost btn-sm act-copy">Copy link</button>
+            <button class="btn btn-ghost btn-sm act-delete" title="Delete">&times;</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not files %}<p id="emptyState" class="empty">No files yet. Upload your first file above.</p>{% endif %}
+  </section>
+</div>
+
+<!-- Share modal -->
+<div id="shareModal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head"><strong>Share file</strong><button class="modal-x" id="modalClose">&times;</button></div>
+    <p class="modal-file" id="modalFile"></p>
+    <label class="modal-label">Link expiry</label>
+    <select id="modalExpiry" class="select wide">
+      {% for h in expiry_options %}<option value="{{ h }}">{{ expiry_label(h) }}</option>{% endfor %}
+    </select>
+    <div class="link-row">
+      <input id="modalLink" class="link-input" readonly>
+      <button class="btn btn-primary" data-copy="#modalLink">Copy</button>
+    </div>
+    <div class="link-row">
+      <input id="modalEmail" class="link-input" placeholder="name@example.com" type="email">
+      <button class="btn btn-ghost" id="modalEmailBtn">Email link</button>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost btn-sm" id="modalRevoke">Revoke link</button></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/app.js"></script>{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block body_class %}landing{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <h1>Send a file. Share a link.</h1>
+    <p class="lede">Drop a file below to get a private, expiring share link &mdash; no account needed.
+       Have an account? <a href="/login">Log in</a> for your full workspace.</p>
+  </div>
+
+  <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload a file">
+    <input id="fileInput" type="file" hidden>
+    <div class="dropzone-inner" data-state="idle">
+      <svg class="dz-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 20h14"/>
+      </svg>
+      <p class="dz-title">Drag a file here, or <span class="link">browse</span></p>
+      <p class="dz-sub">Up to {{ (settings.anon_max_upload_bytes // (1024*1024)) }} MB &middot;
+         link expires in {{ settings.anon_share_expiry_hours }} hours</p>
+    </div>
+    <div class="dz-progress" hidden><div class="bar"><span></span></div><p class="pct">0%</p></div>
+  </div>
+
+  <div id="result" class="result-card" hidden>
+    <div class="result-head">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#0061fe" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+      <strong>Your link is ready</strong>
+    </div>
+    <p class="result-file" id="resultFile"></p>
+    <div class="link-row">
+      <input id="shareLink" class="link-input" readonly>
+      <button class="btn btn-primary" data-copy="#shareLink">Copy</button>
+      <button class="btn btn-ghost" id="emailBtn">Email</button>
+    </div>
+    <p class="result-meta" id="resultMeta"></p>
+    <button class="btn btn-ghost btn-sm" id="uploadAnother">Upload another</button>
+  </div>
+
+  <p id="error" class="error-banner" hidden></p>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/landing.js"></script>{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ file.original_filename }} &middot; {{ settings.app_name }}{% endblock %}
+{% block body_class %}share{% endblock %}
+{% block content %}
+<section class="share-view">
+  <div class="share-card">
+    <div class="file-badge">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#0061fe" stroke-width="1.5">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>
+      </svg>
+    </div>
+    <h1 class="share-name">{{ file.original_filename }}</h1>
+    <p class="share-meta">{{ size_h }}{% if expires_at %} &middot; link expires {{ expires_at.strftime('%b %d, %Y %H:%M UTC') }}{% endif %}</p>
+
+    <a class="btn btn-primary btn-lg" href="{{ download_url }}">Download</a>
+
+    <div class="link-row tight">
+      <input id="shareLink" class="link-input" readonly value="{{ this_url }}">
+      <button class="btn btn-ghost" data-copy="#shareLink">Copy link</button>
+      <button class="btn btn-ghost" id="emailBtn">Email</button>
+    </div>
+    <p class="share-note">Anyone with this link can download the file until it expires.</p>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="/static/js/share.js"></script>{% endblock %}

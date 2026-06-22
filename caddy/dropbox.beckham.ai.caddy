@@ -1,0 +1,13 @@
+# Beckham Share route — add this block to the shared Caddy front's Caddyfile,
+# then reload Caddy. All three hostnames serve the app; share.beckham.ai is the
+# canonical host for share links and the authenticated flow (the app redirects
+# the other hosts there for /login and /app).
+#
+# The public landing page and /s, /d share links need no auth; the app enforces
+# OIDC + the `dropbox` group on /app, so this is a plain reverse proxy. The app
+# container joins the shared proxy network, so Caddy reaches it by name. Trusted
+# LE certs via TLS-ALPN-01.
+share.{$IDP_DOMAIN}, dropbox.{$IDP_DOMAIN}, buckets.{$IDP_DOMAIN} {
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy beckham-share-app:8000
+}

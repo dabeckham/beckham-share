@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Access required &middot; {{ settings.app_name }}{% endblock %}
+{% block content %}
+<section class="centered-note">
+  <div class="note-card">
+    <h1>Access required</h1>
+    <p>You're signed in as <strong>{{ user.email }}</strong>, but your account isn't a member
+       of the <code>{{ settings.required_group }}</code> group, so the workspace isn't available to you.</p>
+    <p>Ask an administrator to add you to the <code>{{ settings.required_group }}</code> group in
+       {{ settings.brand_domain }} identity, then sign in again.</p>
+    <div class="note-actions">
+      <a class="btn btn-ghost" href="/logout">Sign out</a>
+      <a class="btn btn-primary" href="/">Back to home</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

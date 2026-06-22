@@ -1,0 +1,25 @@
+# Secrets & local state — never committed.
+.env
+.env.*
+!.env.example
+secrets/
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db
+
+# Local operator files — host-specific details / internal working notes, kept
+# out of the published repository.
+scripts/deploy.env
+CLAUDE.md
+TIME_LEDGER.md
+docs/INITIAL_PROMPT.md

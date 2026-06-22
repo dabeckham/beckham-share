@@ -1,0 +1,46 @@
+name: beckham-share
+
+# The app joins the existing idp reverse-proxy network so idp-caddy can route
+# dropbox.beckham.ai -> beckham-share-app:8000. The database stays on a private
+# network with no host exposure.
+networks:
+  idp_proxy:
+    external: true
+  internal:
+
+volumes:
+  share-db:
+  share-data:
+
+services:
+  app:
+    build: .
+    image: beckham-share:latest
+    container_name: beckham-share-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://share:${DB_PASSWORD}@db:5432/share
+    volumes:
+      - share-data:/data
+    networks: [idp_proxy, internal]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: beckham-share-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: share
+      POSTGRES_USER: share
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - share-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U share"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]

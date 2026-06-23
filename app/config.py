@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     brand_domain: str = "beckham.ai"
     # Public origin the app is served from (used to build absolute share links).
     base_url: str = "https://share.beckham.ai"
+    # Source-repository link surfaced in the signed-in workspace. Set empty to hide.
+    source_url: str = "https://github.com/dabeckham/beckham-share"
 
     # Signs the session cookie. MUST be set to a long random value in prod.
     secret_key: str = "dev-insecure-change-me"

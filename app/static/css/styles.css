@@ -104,6 +104,7 @@ body {
 .side-link:hover { background: #f1f4f9; color: var(--ink); }
 .side-link.active { background: #eaf1ff; color: var(--blue); }
 .usage { margin-top: auto; color: var(--muted); font-size: 13px; padding: 12px; }
+.source-link { font-size: 13px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
 
 .filespane { padding: 28px 32px; }
 .filespane-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }

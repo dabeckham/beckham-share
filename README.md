@@ -97,6 +97,18 @@ uvicorn app.main:app --reload
 The landing page, uploads, share pages, and downloads work without OIDC
 configured; only the `/app` workspace requires Authentik.
 
+## Testing
+
+Three layers — backend integration (pytest), browser end-to-end (Playwright),
+and a live smoke + configuration check — run in CI on every push and pull
+request. Full details in [docs/TESTING.md](docs/TESTING.md).
+
+```sh
+sh scripts/run-tests.sh   # backend integration tests (throwaway Postgres db)
+sh scripts/run-e2e.sh     # browser end-to-end tests (throwaway local instance)
+sh scripts/smoke.sh       # post-deploy checks against the live deployment
+```
+
 ## Project layout
 
 ```

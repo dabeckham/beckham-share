@@ -99,3 +99,10 @@ def test_email_share_falls_back_when_smtp_unconfigured(client, member):
     r = client.post(f"/api/shares/{token}/email", data={"to": "friend@example.com"})
     assert r.status_code == 503
     assert r.json()["reason"] == "email_not_configured"
+
+
+def test_email_share_requires_member(client):
+    # Anonymous callers cannot use the server relay (anti-spam); 403, not a send.
+    token = _anon_upload(client).json()["token"]
+    r = client.post(f"/api/shares/{token}/email", data={"to": "friend@example.com"})
+    assert r.status_code == 403

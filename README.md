@@ -109,11 +109,24 @@ sh scripts/run-e2e.sh     # browser end-to-end tests (throwaway local instance)
 sh scripts/smoke.sh       # post-deploy checks against the live deployment
 ```
 
+## Documentation
+
+Full reference documentation lives in [`docs/`](docs/README.md):
+
+- [Architecture](docs/ARCHITECTURE.md) — components, request flows, data model.
+- [Configuration](docs/CONFIGURATION.md) — every environment variable.
+- [Operations](docs/OPERATIONS.md) — deploy and the day-two runbook.
+- [Security](docs/SECURITY.md) — auth, abuse controls, threat model.
+- [API reference](docs/API.md) — every HTTP route.
+- [Testing](docs/TESTING.md) — the three test layers.
+- [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
+
 ## Project layout
 
 ```
 app/            FastAPI application (routes, models, auth, storage, templates, static)
 caddy/          reverse-proxy route snippet for the shared Caddy front
-scripts/        deploy, secret generation, Authentik setup
-docs/           project notes
+scripts/        deploy, secret generation, Authentik setup, test runners
+tests/          backend (pytest) + e2e (Playwright) suites
+docs/           architecture, configuration, operations, security, API, testing
 ```

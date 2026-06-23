@@ -18,6 +18,15 @@ def test_member_reaches_app(client, member):
     assert client.get("/app").status_code == 200
 
 
+def test_member_sees_source_link(client, member):
+    from app.config import settings
+
+    r = client.get("/app")
+    assert r.status_code == 200
+    assert settings.source_url
+    assert settings.source_url in r.text
+
+
 def test_api_upload_forbidden_for_anonymous(client):
     r = client.post("/api/files", files={"file": ("x.txt", b"x", "text/plain")}, data={"expiry_hours": "24"})
     assert r.status_code == 403

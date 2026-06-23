@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>File picker test</title>
+  <style>
+    body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+           margin: 0; padding: 16px; color: #1e1919; background: #f7f9fc; }
+    h1 { font-size: 19px; } p { color: #637282; font-size: 14px; }
+    .case { background: #fff; border: 1px solid #e3e8ee; border-radius: 12px;
+            padding: 14px; margin: 12px 0; }
+    .case b { font-size: 15px; } code { background: #f1f4f9; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    label.btn { display: inline-block; margin-top: 10px; background: #0061fe; color: #fff;
+                padding: 12px 18px; border-radius: 8px; font-weight: 600; font-size: 15px; }
+    input[type=file] { display: none; }
+    .out { margin-top: 10px; font-size: 14px; color: #0f6e56; word-break: break-all; }
+    .out.empty { color: #99a; }
+  </style>
+</head>
+<body>
+  <h1>File picker test</h1>
+  <p>A standalone diagnostic for the "upload asks for microphone / no file picker" problem on
+     mobile browsers (see <code>android-file-picker.md</code> in this folder). Tap each
+     <b>Choose file</b> below and note which one opens a real <b>Files / My Files</b> browser (vs
+     Camera/Camcorder/Photos&amp;Videos), and whether it still asks for microphone/camera. The
+     picked file name shows in green to confirm it worked. Compare the cases to see how the
+     <code>accept</code> attribute changes the chooser on your device.</p>
+
+  <div class="case" id="c1"><b>1.</b> No <code>accept</code>
+    <div><label class="btn">Choose file<input type="file" data-out="o1"></label></div>
+    <div class="out empty" id="o1">no file chosen</div></div>
+
+  <div class="case" id="c2"><b>2.</b> <code>accept="application/octet-stream"</code>
+    <div><label class="btn">Choose file<input type="file" accept="application/octet-stream" data-out="o2"></label></div>
+    <div class="out empty" id="o2">no file chosen</div></div>
+
+  <div class="case" id="c3"><b>3.</b> Explicit extensions
+    <code>.pdf,.zip,.txt,.doc,.docx,.csv,.jpg,.png,.mp4,.mp3,.apk</code>
+    <div><label class="btn">Choose file<input type="file"
+         accept=".pdf,.zip,.txt,.doc,.docx,.csv,.jpg,.png,.mp4,.mp3,.apk" data-out="o3"></label></div>
+    <div class="out empty" id="o3">no file chosen</div></div>
+
+  <div class="case" id="c4"><b>4.</b> <code>accept="application/*,text/*"</code>
+    <div><label class="btn">Choose file<input type="file" accept="application/*,text/*" data-out="o4"></label></div>
+    <div class="out empty" id="o4">no file chosen</div></div>
+
+  <div class="case" id="c5"><b>5.</b> <code>accept="*/*"</code>
+    <div><label class="btn">Choose file<input type="file" accept="*/*" data-out="o5"></label></div>
+    <div class="out empty" id="o5">no file chosen</div></div>
+
+  <div class="case" id="c6"><b>6.</b> No <code>accept</code>, <code>multiple</code>
+    <div><label class="btn">Choose file<input type="file" multiple data-out="o6"></label></div>
+    <div class="out empty" id="o6">no file chosen</div></div>
+
+  <script>
+    document.querySelectorAll('input[type=file]').forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var out = document.getElementById(inp.getAttribute('data-out'));
+        if (inp.files && inp.files.length) {
+          var f = inp.files[0];
+          out.className = 'out';
+          out.textContent = 'OK: ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB)' +
+            (inp.files.length > 1 ? ' +' + (inp.files.length - 1) + ' more' : '');
+        } else { out.className = 'out empty'; out.textContent = 'no file chosen'; }
+      });
+    });
+  </script>
+</body>
+</html>

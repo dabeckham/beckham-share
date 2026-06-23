@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: share
+          POSTGRES_PASSWORD: share
+          POSTGRES_DB: testdb
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U share"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest
+        env:
+          DATABASE_URL: postgresql+psycopg2://share:share@localhost:5432/testdb
+
+  e2e:
+    name: Browser E2E
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: share
+          POSTGRES_PASSWORD: share
+          POSTGRES_DB: e2edb
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U share"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      SECRET_KEY: e2e-secret
+      DATABASE_URL: postgresql+psycopg2://share:share@localhost:5432/e2edb
+      BASE_URL: http://localhost:8000
+      E2E_BASE: http://localhost:8000
+      E2E_SECRET: e2e-secret
+      DATA_DIR: /tmp/bshare-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt -r requirements-e2e.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Start app
+        run: |
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/healthz && break || sleep 1; done
+          curl -sf http://localhost:8000/healthz
+      - run: python -m pytest tests/e2e -q

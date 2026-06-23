@@ -23,3 +23,7 @@ scripts/deploy.env
 CLAUDE.md
 TIME_LEDGER.md
 docs/INITIAL_PROMPT.md
+
+# Brand-art source/sample images (working files, not part of the app).
+Gemini_Generated_Image_*.png
+brand-samples/

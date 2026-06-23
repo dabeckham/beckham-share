@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
-  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <header class="topbar">
     <a class="brand" href="/">
-      <img src="/static/img/logo.svg" alt="{{ settings.brand_domain }}" height="28">
+      <img src="/static/img/logo.png" alt="{{ settings.brand_domain }}" height="28">
       <span class="brand-name">{{ settings.app_name }}</span>
     </a>
     <nav class="topbar-actions">

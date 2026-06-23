@@ -341,7 +341,11 @@ def email_share(token: str, request: Request, to: str = Form(...), db: Session =
     link = db.get(ShareLink, token)
     if not link or link.is_expired:
         raise HTTPException(404, "Link not found or expired.")
+    # Server-side relay is restricted to signed-in members so the public share
+    # page can't be used as a spam relay; anonymous visitors use a mailto: link.
     user = get_current_user(request)
+    if not user or not user.in_required_group:
+        raise HTTPException(403, "Server-side email is for signed-in members.")
     sender = getattr(user, "name", None)
     try:
         send_share_email(to, share_url(token), link.file.original_filename, sender)

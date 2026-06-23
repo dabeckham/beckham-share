@@ -33,6 +33,7 @@ try:
     from authentik.policies.models import PolicyBinding
     from authentik.providers.oauth2.models import (
         ClientType,
+        GrantTypes,
         OAuth2Provider,
         RedirectURI,
         RedirectURIMatchingMode,
@@ -90,6 +91,10 @@ try:
         provider.authorization_flow = auth_flow
         provider.invalidation_flow = inval_flow
         provider.signing_key = signing_key
+
+    # Created via the ORM, grant_types defaults to empty, which makes Authentik
+    # reject the authorization-code flow ("invalid_request"). Set it explicitly.
+    provider.grant_types = [GrantTypes.AUTHORIZATION_CODE, GrantTypes.REFRESH_TOKEN]
 
     # redirect_uris is a property backed by structured RedirectURI entries.
     def _ru(url):

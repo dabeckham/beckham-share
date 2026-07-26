@@ -1,10 +1,11 @@
 # Browser end-to-end test dependencies (run via the Playwright image; see
 # scripts/run-e2e.sh). Kept separate from the runtime and unit-test deps.
-pytest==8.3.4
+pytest==9.1.1
 # itsdangerous: forge a Starlette session cookie for the authenticated workspace
 # E2E (must match the app's signer).
 itsdangerous==2.2.0
 # Pin Playwright to match the runner image (mcr.microsoft.com/playwright/python
 # tag in scripts/run-e2e.sh / CI installs the matching browser build).
 playwright==1.49.0
-pytest-playwright==0.5.2
+# 0.8.0 is the first release that accepts pytest 9.
+pytest-playwright==0.8.0

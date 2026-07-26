@@ -63,8 +63,14 @@ class Settings(BaseSettings):
     smtp_from: str = "Beckham Share <share@beckham.ai>"
     smtp_use_tls: bool = True
 
-    # Whether to trust X-Forwarded-For (true when behind the Caddy/HAProxy front).
-    trust_forwarded_for: bool = True
+    # ── Reverse proxy ────────────────────────────────────────────────────
+    # Which peers are allowed to tell us who the client is. Comma-separated
+    # addresses, CIDR ranges, or resolvable hostnames; hostnames are looked up
+    # at runtime because container addresses are assigned by Docker. A request
+    # arriving from anywhere else is attributed to the address it actually came
+    # from, whatever X-Forwarded-For / X-Real-IP it carries. Leave empty to
+    # trust nothing. `idp-caddy` is the shared front this app sits behind.
+    trusted_proxies: str = "idp-caddy"
 
     @property
     def email_enabled(self) -> bool:

@@ -8,23 +8,83 @@ security boundary — it is a deterrent and an audit aid for a public upload for
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
+import logging
+import socket
+import time
 
 from fastapi import Request
 from ua_parser import user_agent_parser
 
 from .config import settings
 
+log = logging.getLogger("beckham_share.fingerprint")
+
+# Hostnames in TRUSTED_PROXIES resolve to container addresses that Docker can
+# reassign, so the parsed list is rebuilt periodically. It is also rebuilt
+# whenever the setting itself changes, which keeps it honest under test.
+_TRUST_TTL_SECONDS = 60.0
+_trust_cache: tuple[str, float, list] = ("", -_TRUST_TTL_SECONDS, [])
+
+
+def _trusted_networks() -> list:
+    global _trust_cache
+    configured = settings.trusted_proxies
+    key, stamp, nets = _trust_cache
+    if key == configured and time.monotonic() - stamp < _TRUST_TTL_SECONDS:
+        return nets
+
+    nets = []
+    for entry in (e.strip() for e in configured.split(",")):
+        if not entry:
+            continue
+        try:
+            nets.append(ipaddress.ip_network(entry, strict=False))
+            continue
+        except ValueError:
+            pass  # not an address or range — try resolving it as a hostname
+        try:
+            for info in socket.getaddrinfo(entry, None):
+                nets.append(ipaddress.ip_network(info[4][0]))
+        except OSError:
+            log.warning("TRUSTED_PROXIES: cannot resolve %r; ignoring it", entry)
+    _trust_cache = (configured, time.monotonic(), nets)
+    return nets
+
+
+def _is_trusted(address: str | None) -> bool:
+    if not address:
+        return False
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    return any(parsed in net for net in _trusted_networks())
+
 
 def client_ip(request: Request) -> str | None:
-    if settings.trust_forwarded_for:
-        xff = request.headers.get("x-forwarded-for")
-        if xff:
-            return xff.split(",")[0].strip()
-        xri = request.headers.get("x-real-ip")
-        if xri:
-            return xri.strip()
-    return request.client.host if request.client else None
+    """The client's address, believed only as far as the infrastructure vouches.
+
+    Proxy headers are honoured only when the request actually arrived from a
+    trusted proxy — otherwise anyone who can open a socket to the app could
+    claim any address, which would reset the anonymous rate-limit budget and
+    poison the audit trail. ``X-Forwarded-For`` is read right to left: trusted
+    hops are skipped and the first untrusted address is the closest one that a
+    trusted proxy actually observed. Anything further left was appended by the
+    client and means nothing.
+    """
+    peer = request.client.host if request.client else None
+    if not _is_trusted(peer):
+        return peer
+    for hop in reversed(request.headers.get("x-forwarded-for", "").split(",")):
+        hop = hop.strip()
+        if hop and not _is_trusted(hop):
+            return hop
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    return peer
 
 
 def parse_ua(user_agent: str | None) -> dict[str, str | None]:

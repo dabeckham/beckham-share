@@ -42,6 +42,7 @@ ignored. Booleans accept `true`/`false`/`1`/`0`.
 | `OIDC_CLIENT_SECRET` | *(empty)* | OAuth2 client secret. |
 | `OIDC_SCOPES` | `openid profile email groups` | Requested scopes. The `groups` scope is required for the in-app group check. |
 | `REQUIRED_GROUP` | `dropbox` | Group required for the authenticated workspace. Enforced at Authentik **and** in-app. |
+| `ALLOW_MISSING_GROUPS_CLAIM` | `false` | Admit tokens that carry no `groups` claim at all. Off by default: without the claim the in-app check has nothing to check, and admitting the user silently reduces the gate to Authentik's binding alone. Turn on only while repairing a broken scope mapping; the app logs a warning at startup for as long as it is set. |
 
 > Sign-in stays disabled until all three of discovery URL, client ID, and client
 > secret are set (`settings.oidc_configured`). The public landing page, uploads,

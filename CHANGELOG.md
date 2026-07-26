@@ -5,6 +5,15 @@ pre-1.0 scheme; dates are when the change reached `main`.
 
 ## Unreleased
 
+### Security
+- An OIDC token that carries no `groups` claim is now refused instead of being
+  admitted on the strength of Authentik's application binding. The provider is
+  configured to send the claim, so its absence means the configuration has
+  drifted — and falling back reduced a deliberately two-layer gate to the one
+  layer the in-app check exists not to depend on. `ALLOW_MISSING_GROUPS_CLAIM`
+  (default `false`) restores the old behaviour for repairing a broken scope
+  mapping, and warns at startup for as long as it is set.
+
 ### Added
 - Full reference documentation under `docs/`: architecture, configuration,
   operations runbook, security model, and API reference, with a docs index and

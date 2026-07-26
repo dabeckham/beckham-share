@@ -27,6 +27,28 @@ def test_member_sees_source_link(client, member):
     assert settings.source_url in r.text
 
 
+def test_missing_groups_claim_is_refused(client, groupless):
+    # A token with no groups claim leaves the in-app check with nothing to
+    # check. Absence of evidence is not evidence of membership.
+    r = client.get("/app")
+    assert r.status_code == 403
+    assert "Access required" in r.text
+
+
+def test_missing_groups_claim_also_blocks_the_management_api(client, groupless):
+    r = client.post("/api/files", files={"file": ("x.txt", b"x", "text/plain")}, data={"expiry_hours": "24"})
+    assert r.status_code == 403
+
+
+def test_missing_groups_claim_can_be_admitted_deliberately(client, groupless, monkeypatch):
+    # The escape hatch for repairing a broken scope mapping without locking the
+    # only two members out of their own files.
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "allow_missing_groups_claim", True)
+    assert client.get("/app").status_code == 200
+
+
 def test_api_upload_forbidden_for_anonymous(client):
     r = client.post("/api/files", files={"file": ("x.txt", b"x", "text/plain")}, data={"expiry_hours": "24"})
     assert r.status_code == 403

@@ -23,5 +23,9 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
     CMD curl -fsS http://localhost:8000/healthz || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips", "*"]
+# No --proxy-headers: it would rewrite the peer address from X-Forwarded-For
+# before the app sees it, and with --forwarded-allow-ips "*" it did so for any
+# caller. Deciding whose forwarded headers to believe belongs in one place —
+# see TRUSTED_PROXIES and app/fingerprint.py — so uvicorn reports the socket
+# peer and the app does the rest.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

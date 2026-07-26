@@ -24,7 +24,7 @@ ignored. Booleans accept `true`/`false`/`1`/`0`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `SECRET_KEY` | `dev-insecure-change-me` | Signs the session cookie. **Must** be a long random value in production — rotating it logs everyone out. |
-| `TRUST_FORWARDED_FOR` | `true` | Trust `X-Forwarded-For` / `X-Real-IP` for the client IP. Correct when behind the Caddy/HAProxy front; set `false` only if the app is exposed directly. |
+| `TRUSTED_PROXIES` | `idp-caddy` | Peers allowed to name the client through `X-Forwarded-For` / `X-Real-IP`. Comma-separated addresses, CIDR ranges, or hostnames (resolved at runtime, since container addresses are assigned by Docker). Requests from anywhere else are attributed to the address they arrived from, whatever headers they carry. Leave empty to trust nothing — correct when the app is exposed directly. |
 
 ## Storage & database
 

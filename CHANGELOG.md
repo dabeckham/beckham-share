@@ -5,7 +5,38 @@ pre-1.0 scheme; dates are when the change reached `main`.
 
 ## Unreleased
 
+### Added
+- Full reference documentation under `docs/`: architecture, configuration,
+  operations runbook, security model, and API reference, with a docs index and
+  a `CONTRIBUTING` guide.
+
+### Changed
+- Template rendering goes through a small `render()`/`error_page()` helper,
+  which also moves the app onto Starlette's current `TemplateResponse`
+  signature.
+
 ### Security
+- Updated dependencies to clear published advisories against the pinned
+  versions: Authlib 1.4.0 → 1.7.2 (signature-verification bypass in JWS JWK
+  header handling, CVE-2026-27962, plus nine further advisories on the OIDC
+  path), python-multipart 0.0.20 → 0.0.32 (denial-of-service and parameter
+  smuggling in multipart parsing, reachable from the public upload form), and
+  Jinja2 3.1.5 → 3.1.6 (CVE-2025-27516).
+- Moved to Starlette 1.3.1 (FastAPI 0.140.0), clearing seven advisories that
+  applied to the previously resolved 0.41.3 — most notably CVE-2025-62727, a
+  quadratic-time denial of service reachable through the `Range` header on any
+  share download, and CVE-2026-54283, unenforced form-body limits on
+  URL-encoded posts. Starlette is now pinned explicitly rather than left to
+  dependency resolution.
+- The client address behind the anonymous rate limit and the upload audit trail
+  is no longer take-your-word-for-it. Forwarded headers are honoured only from
+  peers listed in the new `TRUSTED_PROXIES` setting, and `X-Forwarded-For` is
+  read right to left so hops appended by the client are discarded. Previously
+  any caller that could open a socket to the app could name itself, which reset
+  the rate-limit budget and wrote a false address into the audit trail;
+  `TRUST_FORWARDED_FOR=false` did not prevent it, because the server was
+  rewriting the peer address before the application saw it. That setting is
+  replaced by `TRUSTED_PROXIES`.
 - An OIDC token that carries no `groups` claim is now refused instead of being
   admitted on the strength of Authentik's application binding. The provider is
   configured to send the claim, so its absence means the configuration has
@@ -13,11 +44,6 @@ pre-1.0 scheme; dates are when the change reached `main`.
   layer the in-app check exists not to depend on. `ALLOW_MISSING_GROUPS_CLAIM`
   (default `false`) restores the old behaviour for repairing a broken scope
   mapping, and warns at startup for as long as it is set.
-
-### Added
-- Full reference documentation under `docs/`: architecture, configuration,
-  operations runbook, security model, and API reference, with a docs index and
-  a `CONTRIBUTING` guide.
 
 ## 2026-06-23
 

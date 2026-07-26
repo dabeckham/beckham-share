@@ -5,6 +5,12 @@ pre-1.0 scheme; dates are when the change reached `main`.
 
 ## Unreleased
 
+### Changed
+- The SMTP relay's pinned address is now set by `SMTP_RELAY_HOST` /
+  `SMTP_RELAY_IP` instead of being hard-coded in `docker-compose.yml`, so it can
+  be corrected from `.env` when the provider's pool changes. Added a runbook
+  entry for diagnosing it, since the failure looks like nothing else breaking.
+
 ### Added
 - Full reference documentation under `docs/`: architecture, configuration,
   operations runbook, security model, and API reference, with a docs index and

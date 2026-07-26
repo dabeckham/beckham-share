@@ -94,12 +94,22 @@ def expiry_from_hours(hours: int) -> "object | None":
 def base_context(request: Request) -> dict:
     user = get_current_user(request)
     return {
-        "request": request,
         "settings": settings,
         "user": user,
         "expiry_options": settings.expiry_options,
         "default_expiry": settings.default_share_expiry_hours,
     }
+
+
+def render(request: Request, template: str, extra: dict | None = None, status_code: int = 200):
+    """Render a template with the shared base context merged in."""
+    return templates.TemplateResponse(
+        request, template, {**base_context(request), **(extra or {})}, status_code=status_code,
+    )
+
+
+def error_page(request: Request, code: int, message: str):
+    return render(request, "error.html", {"code": code, "message": message}, status_code=code)
 
 
 def record_event(db: Session, request: Request, file: FileModel, *, anonymous: bool,
@@ -136,7 +146,7 @@ def landing(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/app", status_code=302)
-    return templates.TemplateResponse("landing.html", base_context(request))
+    return render(request, "landing.html")
 
 
 @app.post("/api/anon-upload")
@@ -211,11 +221,7 @@ async def auth_callback(request: Request):
         token = await oauth.authentik.authorize_access_token(request)
     except Exception as exc:  # noqa: BLE001 - surface a friendly error page
         log.warning("OIDC callback failed: %s", exc)
-        return templates.TemplateResponse(
-            "error.html",
-            {**base_context(request), "code": 400, "message": "Sign-in failed. Please try again."},
-            status_code=400,
-        )
+        return error_page(request, 400, "Sign-in failed. Please try again.")
     userinfo = token.get("userinfo")
     if not userinfo:
         userinfo = await oauth.authentik.userinfo(token=token)
@@ -247,17 +253,14 @@ def app_home(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     if not user.in_required_group:
-        return templates.TemplateResponse(
-            "not_authorized.html", base_context(request), status_code=403,
-        )
+        return render(request, "not_authorized.html", status_code=403)
     files = db.execute(
         select(FileModel)
         .where(FileModel.owner_sub == user.sub, FileModel.deleted.is_(False))
         .order_by(FileModel.created_at.desc())
     ).scalars().all()
     rows = [_file_row(f) for f in files]
-    ctx = {**base_context(request), "files": rows, "usage": humanize_size(storage.disk_usage_bytes())}
-    return templates.TemplateResponse("app.html", ctx)
+    return render(request, "app.html", {"files": rows, "usage": humanize_size(storage.disk_usage_bytes())})
 
 
 @app.post("/api/files")
@@ -362,23 +365,17 @@ def email_share(token: str, request: Request, to: str = Form(...), db: Session =
 def share_page(token: str, request: Request, db: Session = Depends(get_db)):
     link = db.get(ShareLink, token)
     if not link or link.file.deleted:
-        return templates.TemplateResponse(
-            "error.html", {**base_context(request), "code": 404, "message": "This link doesn't exist."},
-            status_code=404)
+        return error_page(request, 404, "This link doesn't exist.")
     if link.is_expired:
-        return templates.TemplateResponse(
-            "error.html", {**base_context(request), "code": 410, "message": "This link has expired."},
-            status_code=410)
-    ctx = {
-        **base_context(request),
+        return error_page(request, 410, "This link has expired.")
+    return render(request, "share.html", {
         "file": link.file,
         "size_h": humanize_size(link.file.size_bytes),
         "token": token,
         "download_url": f"{settings.base_url.rstrip('/')}/d/{token}",
         "this_url": share_url(token),
         "expires_at": link.expires_at,
-    }
-    return templates.TemplateResponse("share.html", ctx)
+    })
 
 
 @app.get("/d/{token}")

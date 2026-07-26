@@ -17,6 +17,17 @@ pre-1.0 scheme; dates are when the change reached `main`.
   path), python-multipart 0.0.20 → 0.0.32 (denial-of-service and parameter
   smuggling in multipart parsing, reachable from the public upload form), and
   Jinja2 3.1.5 → 3.1.6 (CVE-2025-27516).
+- Moved to Starlette 1.3.1 (FastAPI 0.140.0), clearing seven advisories that
+  applied to the previously resolved 0.41.3 — most notably CVE-2025-62727, a
+  quadratic-time denial of service reachable through the `Range` header on any
+  share download, and CVE-2026-54283, unenforced form-body limits on
+  URL-encoded posts. Starlette is now pinned explicitly rather than left to
+  dependency resolution.
+
+### Changed
+- Template rendering goes through a small `render()`/`error_page()` helper,
+  which also moves the app onto Starlette's current `TemplateResponse`
+  signature.
 
 ## 2026-06-23
 

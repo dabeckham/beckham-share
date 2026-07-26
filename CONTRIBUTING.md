@@ -63,6 +63,13 @@ green before merge.
   are gitignored; document new settings with safe placeholders in `.env.example`.
 - **Update the docs with the code.** A change that adds a route, a setting, or an
   operational step updates the matching document under `docs/`.
+- **Strip metadata from generated binaries before committing them.** Anything
+  produced by a tool — a PDF rendered from HTML, an exported image — carries an
+  embedded record of the machine that made it: source filename, the rendering
+  engine and its version, the operating system, a timestamp. None of it is
+  visible in the document and none of it belongs in a public repository.
+  `exiftool -all= file.pdf` clears it, or `qpdf` if you prefer to keep the
+  document structure untouched.
 - Match the surrounding code's style; keep functions small and the modules'
   single responsibilities intact (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
 

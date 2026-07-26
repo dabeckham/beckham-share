@@ -22,10 +22,12 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://share:${DB_PASSWORD}@db:5432/share
     extra_hosts:
-      # The SMTP relay presents a shared *.eigbox.net certificate; map the
-      # cert-valid hostname to its IP so STARTTLS verification succeeds when
-      # sending share-by-email. (Set SMTP_HOST=mail.eigbox.net in .env.)
-      - "mail.eigbox.net:66.96.134.48"
+      # The SMTP relay presents a shared *.eigbox.net certificate, so we have to
+      # connect by that hostname for STARTTLS verification to succeed — but its
+      # public DNS record points at a pool member this network cannot reach.
+      # Pin the name to an address that answers. Override both halves from .env
+      # when the pool changes; see docs/OPERATIONS.md for how to find a live one.
+      - "${SMTP_RELAY_HOST:-mail.eigbox.net}:${SMTP_RELAY_IP:-66.96.134.48}"
     volumes:
       - share-data:/data
     networks: [idp_proxy, internal]

@@ -124,4 +124,32 @@ certificates are issued and renewed automatically by Caddy.
 | `503` on `/login` | OIDC not configured | `OIDC_*` set in `.env`? |
 | Anonymous upload `429` | Rate limit hit | Expected; tune `ANON_UPLOADS_PER_*`. |
 | Email returns `email_not_configured` | SMTP unset | Set `SMTP_*`; STARTTLS host mapping present. |
+| Email returns `send_failed`, logs show a connection timeout | The pinned relay address stopped answering | See "Relay address" below. |
 | Member sees "not authorized" | Not in the `dropbox` group | Group membership in Authentik; `groups` scope mapped. |
+
+### Relay address
+
+Share-by-email connects to `mail.eigbox.net` because that is the name its
+certificate covers, but the name's public DNS record points at a pool member the
+container network cannot reach. `docker-compose.yml` pins the name to a working
+address (`SMTP_RELAY_IP`). If the provider retires that address, mail starts
+timing out while everything else keeps working.
+
+Confirm what the container is using, and whether it still answers:
+
+```sh
+docker compose exec -T app python - <<'PY'
+import smtplib, ssl, socket
+print("resolves to:", sorted({i[4][0] for i in socket.getaddrinfo("mail.eigbox.net", 587)}))
+s = smtplib.SMTP("mail.eigbox.net", 587, timeout=15)
+print("banner:", s.ehlo()[1].decode().splitlines()[0])
+s.starttls(context=ssl.create_default_context())   # verifies the certificate
+print("STARTTLS ok")
+s.quit()
+PY
+```
+
+If it no longer answers, find one that does — the provider publishes several —
+set `SMTP_RELAY_IP` in `.env`, and `docker compose up -d app` to rewrite the
+container's `/etc/hosts`. Keep `SMTP_RELAY_HOST` as the certificate name;
+connecting by address instead would fail verification.

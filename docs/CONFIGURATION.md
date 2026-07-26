@@ -81,9 +81,21 @@ and the server-side relay (members only) returns a "not configured" response.
 | `SMTP_FROM` | `Beckham Share <share@beckham.ai>` | `From` header on outgoing mail. |
 | `SMTP_USE_TLS` | `true` | Use STARTTLS before authenticating. |
 
-> The relay used in production presents a shared `*.eigbox.net` certificate, so
-> `docker-compose.yml` maps `mail.eigbox.net` to its IP via `extra_hosts` to keep
-> STARTTLS certificate verification valid. Set `SMTP_HOST=mail.eigbox.net`.
+The relay used in production presents a shared `*.eigbox.net` certificate, so the
+app has to connect by that hostname for STARTTLS verification to succeed — but
+the hostname's public DNS record points at a pool member the container network
+cannot reach. `docker-compose.yml` therefore pins the name to an address that
+answers, via `extra_hosts`. Two variables control the pin:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `SMTP_RELAY_HOST` | `mail.eigbox.net` | Hostname the certificate is valid for, and the value `SMTP_HOST` should use. |
+| `SMTP_RELAY_IP` | `66.96.134.48` | Address that hostname is pinned to inside the container. |
+
+> Read by Compose when the stack starts, not by `app/config.py` — they shape the
+> container's `/etc/hosts` rather than the application's settings. When mail
+> starts failing to connect, this pin is the first thing to check;
+> [Operations](OPERATIONS.md) has the procedure.
 
 ## Derived settings (not environment variables)
 

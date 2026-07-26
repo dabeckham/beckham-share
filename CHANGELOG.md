@@ -5,6 +5,17 @@ pre-1.0 scheme; dates are when the change reached `main`.
 
 ## Unreleased
 
+### Security
+- The client address behind the anonymous rate limit and the upload audit trail
+  is no longer take-your-word-for-it. Forwarded headers are honoured only from
+  peers listed in the new `TRUSTED_PROXIES` setting, and `X-Forwarded-For` is
+  read right to left so hops appended by the client are discarded. Previously
+  any caller that could open a socket to the app could name itself, which reset
+  the rate-limit budget and wrote a false address into the audit trail;
+  `TRUST_FORWARDED_FOR=false` did not prevent it, because the server was
+  rewriting the peer address before the application saw it. That setting is
+  replaced by `TRUSTED_PROXIES`.
+
 ### Added
 - Full reference documentation under `docs/`: architecture, configuration,
   operations runbook, security model, and API reference, with a docs index and

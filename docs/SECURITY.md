@@ -19,10 +19,17 @@ abuse controls, the data handled, and the threat model.
      can't complete the flow at the IdP.
   2. **In-app backstop** — `/app` and every management route re-check the
      `groups` claim (`CurrentUser.in_required_group`).
-- **No-groups fallback.** If a token arrives with no `groups` claim (scope
-  mapping missing), the app trusts Authentik's application-level binding rather
-  than locking everyone out, and logs a warning so the gap is visible. Keep the
-  `groups` scope configured so the in-app check is authoritative.
+- **A missing `groups` claim is refused.** Authentik is configured to send the
+  claim (a `groups` scope mapping is bound to the provider), so a token without
+  one means the provider's configuration has drifted — not that the user belongs
+  to nothing. Admitting them would quietly reduce a deliberately two-layer gate
+  to Authentik's binding alone, which is the layer this check exists not to
+  depend on. The request is refused and the reason is logged.
+- **Escape hatch.** `ALLOW_MISSING_GROUPS_CLAIM` (default `false`) restores the
+  old behaviour so a broken scope mapping can be repaired without locking the
+  members out of their own files. It re-opens the gap it exists to close, so the
+  app logs a warning at startup for as long as it is set. Clear it once the
+  mapping is fixed.
 
 ## 2. Anonymous-upload abuse controls
 
@@ -125,7 +132,9 @@ Every upload writes an `upload_events` row for review — see below.
 
 - Set a strong, unique `SECRET_KEY` in production; rotating it invalidates all
   sessions.
-- Keep the `groups` scope mapping configured so the in-app group check is
-  authoritative rather than relying on the fallback.
+- Keep the `groups` scope mapping bound to the provider. Without it nobody
+  reaches the workspace, which is the intended failure direction — check
+  `docker compose logs app` for the "no groups claim" warning if sign-in starts
+  ending in a 403.
 - Review the `upload_events` table periodically for anomalous IPs/fingerprints.
 - Tune `ANON_*` limits to the host's tolerance; they are all environment-driven.

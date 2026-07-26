@@ -38,13 +38,28 @@ class CurrentUser:
 
     @property
     def in_required_group(self) -> bool:
-        # If Authentik returns no groups claim (scope mapping not configured),
-        # trust Authentik's application-level group binding instead of locking
-        # everyone out — but log it so the gap is visible.
-        if not self.groups:
-            log.warning("OIDC token carried no groups claim for %s; relying on Authentik app binding", self.sub)
+        if self.groups:
+            return settings.required_group in self.groups
+        # No groups claim at all. Authentik is configured to send one, so its
+        # absence means the provider's scope mapping has drifted, not that this
+        # user happens to belong to nothing. Authentik's own binding on the
+        # application should still have kept non-members out, but that is the
+        # layer we don't control — and this check exists precisely to not depend
+        # on it. So the answer is no, unless an operator has deliberately said
+        # otherwise while repairing the mapping.
+        if settings.allow_missing_groups_claim:
+            log.warning(
+                "OIDC token carried no groups claim for %s; admitting anyway because "
+                "ALLOW_MISSING_GROUPS_CLAIM is set. Fix the provider's groups scope mapping.",
+                self.sub,
+            )
             return True
-        return settings.required_group in self.groups
+        log.warning(
+            "OIDC token carried no groups claim for %s; refusing. The provider's groups "
+            "scope mapping is missing or not bound to this application.",
+            self.sub,
+        )
+        return False
 
 
 def get_current_user(request: Request) -> CurrentUser | None:

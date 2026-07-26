@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # Only members of this group may use the authenticated interface. Authentik
     # also gates the application by this group; this is the in-app backstop.
     required_group: str = "dropbox"
+    # A token with no `groups` claim leaves the in-app check with nothing to
+    # check, so it is refused. Turn this on only as a temporary measure while a
+    # broken scope mapping is repaired: it collapses a deliberately two-layer
+    # gate down to Authentik's binding alone. The app says so on every startup.
+    allow_missing_groups_claim: bool = False
 
     # ── Upload limits & abuse controls ───────────────────────────────────
     # Authenticated members get a generous cap; anonymous (landing page) is tight.

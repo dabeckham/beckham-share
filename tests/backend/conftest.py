@@ -69,6 +69,12 @@ def nonmember(monkeypatch):
 
 
 @pytest.fixture
+def groupless(monkeypatch):
+    """Authenticated user whose token carried no `groups` claim at all."""
+    return _as_user(monkeypatch, [])
+
+
+@pytest.fixture
 def db_session():
     s = appdb.SessionLocal()
     try:

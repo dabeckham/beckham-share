@@ -39,6 +39,9 @@ async def lifespan(app: FastAPI):
     init_db()
     log.info("%s started (oidc_configured=%s, email_enabled=%s)",
              settings.app_name, settings.oidc_configured, settings.email_enabled)
+    if settings.allow_missing_groups_claim:
+        log.warning("ALLOW_MISSING_GROUPS_CLAIM is set: tokens with no groups claim will be "
+                    "admitted to the workspace. Clear it once the scope mapping is fixed.")
     yield
 
 

@@ -24,7 +24,7 @@ ignored. Booleans accept `true`/`false`/`1`/`0`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `SECRET_KEY` | `dev-insecure-change-me` | Signs the session cookie. **Must** be a long random value in production — rotating it logs everyone out. |
-| `TRUST_FORWARDED_FOR` | `true` | Trust `X-Forwarded-For` / `X-Real-IP` for the client IP. Correct when behind the Caddy/HAProxy front; set `false` only if the app is exposed directly. |
+| `TRUSTED_PROXIES` | `idp-caddy` | Peers allowed to name the client through `X-Forwarded-For` / `X-Real-IP`. Comma-separated addresses, CIDR ranges, or hostnames (resolved at runtime, since container addresses are assigned by Docker). Requests from anywhere else are attributed to the address they arrived from, whatever headers they carry. Leave empty to trust nothing — correct when the app is exposed directly. |
 
 ## Storage & database
 
@@ -42,6 +42,7 @@ ignored. Booleans accept `true`/`false`/`1`/`0`.
 | `OIDC_CLIENT_SECRET` | *(empty)* | OAuth2 client secret. |
 | `OIDC_SCOPES` | `openid profile email groups` | Requested scopes. The `groups` scope is required for the in-app group check. |
 | `REQUIRED_GROUP` | `dropbox` | Group required for the authenticated workspace. Enforced at Authentik **and** in-app. |
+| `ALLOW_MISSING_GROUPS_CLAIM` | `false` | Admit tokens that carry no `groups` claim at all. Off by default: without the claim the in-app check has nothing to check, and admitting the user silently reduces the gate to Authentik's binding alone. Turn on only while repairing a broken scope mapping; the app logs a warning at startup for as long as it is set. |
 
 > Sign-in stays disabled until all three of discovery URL, client ID, and client
 > secret are set (`settings.oidc_configured`). The public landing page, uploads,

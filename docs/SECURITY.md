@@ -19,10 +19,17 @@ abuse controls, the data handled, and the threat model.
      can't complete the flow at the IdP.
   2. **In-app backstop** — `/app` and every management route re-check the
      `groups` claim (`CurrentUser.in_required_group`).
-- **No-groups fallback.** If a token arrives with no `groups` claim (scope
-  mapping missing), the app trusts Authentik's application-level binding rather
-  than locking everyone out, and logs a warning so the gap is visible. Keep the
-  `groups` scope configured so the in-app check is authoritative.
+- **A missing `groups` claim is refused.** Authentik is configured to send the
+  claim (a `groups` scope mapping is bound to the provider), so a token without
+  one means the provider's configuration has drifted — not that the user belongs
+  to nothing. Admitting them would quietly reduce a deliberately two-layer gate
+  to Authentik's binding alone, which is the layer this check exists not to
+  depend on. The request is refused and the reason is logged.
+- **Escape hatch.** `ALLOW_MISSING_GROUPS_CLAIM` (default `false`) restores the
+  old behaviour so a broken scope mapping can be repaired without locking the
+  members out of their own files. It re-opens the gap it exists to close, so the
+  app logs a warning at startup for as long as it is set. Clear it once the
+  mapping is fixed.
 
 ## 2. Anonymous-upload abuse controls
 
@@ -41,7 +48,12 @@ fully buffered. Members have a separate, larger cap (`MAX_UPLOAD_BYTES`).
 - `ANON_UPLOADS_PER_DAY` (default 20) in the last 24 hours.
 
 The count is taken from the `upload_events` audit rows, keyed by **IP _or_
-fingerprint** (`OR`), so rotating just one signal does not reset the budget.
+fingerprint** (`OR`), so rotating just one signal does not reset the budget. The
+two keys carry different weight on purpose: the address is established by the
+infrastructure (see `TRUSTED_PROXIES` below), while the browser fingerprint is
+supplied by the client and can be changed at will. The fingerprint's job is to
+catch one device rotating addresses; it is an additional key, never a
+substitute for the address.
 Because it counts rows that already exist in the database, the limit holds across
 worker processes and restarts with no separate store. Over-budget requests get
 `429` with a `Retry-After` header.
@@ -57,9 +69,17 @@ Every upload writes an `upload_events` row for review — see below.
 
 `app/fingerprint.py` records, per upload:
 
-- **Client IP** — from `X-Forwarded-For` / `X-Real-IP` when `TRUST_FORWARDED_FOR`
-  is set (the real client IP is preserved through HAProxy's PROXY protocol),
-  otherwise the socket peer.
+- **Client IP** — the address the request arrived from, unless it arrived from a
+  peer listed in `TRUSTED_PROXIES`, in which case that peer's
+  `X-Forwarded-For` / `X-Real-IP` is believed instead. The real client IP is
+  preserved to the front through HAProxy's PROXY protocol.
+
+  `X-Forwarded-For` is read **right to left**: trusted hops are skipped and the
+  first untrusted address is the closest one a trusted proxy actually observed.
+  Reading left to right would return whatever the client itself put in the
+  header, because proxies append. This matters because the anonymous rate limit
+  is keyed on the address — an address the client can choose is an address that
+  resets the budget.
 - **User agent** — raw, plus a parsed `browser` / `os` / `device` breakdown for
   human-readable review.
 - **Accept-Language**.
@@ -106,13 +126,15 @@ Every upload writes an `upload_events` row for review — see below.
 | Public share page abused as a spam relay | Server-side email is members-only; anonymous uses `mailto:`. |
 | Oversized-upload resource exhaustion | Streaming write with an early abort + partial-file cleanup. |
 | Session forgery | Signed session cookie (`SECRET_KEY`); `Secure` + `SameSite=Lax`. |
-| Spoofed client IP | Real IP preserved via PROXY protocol; `X-Forwarded-For` trusted only behind the front. |
+| Spoofed client IP (to reset the rate limit or poison the audit trail) | Forwarded headers are honoured only from peers in `TRUSTED_PROXIES`, and the chain is read right to left so client-appended hops are discarded. Everything else is attributed to the address it arrived from. |
 
 ## 7. Operational guidance
 
 - Set a strong, unique `SECRET_KEY` in production; rotating it invalidates all
   sessions.
-- Keep the `groups` scope mapping configured so the in-app group check is
-  authoritative rather than relying on the fallback.
+- Keep the `groups` scope mapping bound to the provider. Without it nobody
+  reaches the workspace, which is the intended failure direction — check
+  `docker compose logs app` for the "no groups claim" warning if sign-in starts
+  ending in a 403.
 - Review the `upload_events` table periodically for anomalous IPs/fingerprints.
 - Tune `ANON_*` limits to the host's tolerance; they are all environment-driven.

@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # Only members of this group may use the authenticated interface. Authentik
     # also gates the application by this group; this is the in-app backstop.
     required_group: str = "dropbox"
+    # A token with no `groups` claim leaves the in-app check with nothing to
+    # check, so it is refused. Turn this on only as a temporary measure while a
+    # broken scope mapping is repaired: it collapses a deliberately two-layer
+    # gate down to Authentik's binding alone. The app says so on every startup.
+    allow_missing_groups_claim: bool = False
 
     # ── Upload limits & abuse controls ───────────────────────────────────
     # Authenticated members get a generous cap; anonymous (landing page) is tight.
@@ -63,8 +68,14 @@ class Settings(BaseSettings):
     smtp_from: str = "Beckham Share <share@beckham.ai>"
     smtp_use_tls: bool = True
 
-    # Whether to trust X-Forwarded-For (true when behind the Caddy/HAProxy front).
-    trust_forwarded_for: bool = True
+    # ── Reverse proxy ────────────────────────────────────────────────────
+    # Which peers are allowed to tell us who the client is. Comma-separated
+    # addresses, CIDR ranges, or resolvable hostnames; hostnames are looked up
+    # at runtime because container addresses are assigned by Docker. A request
+    # arriving from anywhere else is attributed to the address it actually came
+    # from, whatever X-Forwarded-For / X-Real-IP it carries. Leave empty to
+    # trust nothing. `idp-caddy` is the shared front this app sits behind.
+    trusted_proxies: str = "idp-caddy"
 
     @property
     def email_enabled(self) -> bool:

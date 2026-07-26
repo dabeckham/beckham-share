@@ -41,6 +41,9 @@ pre-1.0 scheme; dates are when the change reached `main`.
   `TRUST_FORWARDED_FOR=false` did not prevent it, because the server was
   rewriting the peer address before the application saw it. That setting is
   replaced by `TRUSTED_PROXIES`.
+- pytest 8.3.4 → 9.1.1 (with pytest-playwright 0.5.2 → 0.8.0, the first release
+  that accepts pytest 9) for CVE-2025-71176, unsafe temporary-directory
+  handling. Test-only — pytest is not installed in the runtime image.
 - An OIDC token that carries no `groups` claim is now refused instead of being
   admitted on the strength of Authentik's application binding. The provider is
   configured to send the claim, so its absence means the configuration has

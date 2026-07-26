@@ -1,6 +1,6 @@
 # Browser end-to-end test dependencies (run via the Playwright image; see
 # scripts/run-e2e.sh). Kept separate from the runtime and unit-test deps.
-pytest==8.3.4
+pytest==9.0.3
 # itsdangerous: forge a Starlette session cookie for the authenticated workspace
 # E2E (must match the app's signer).
 itsdangerous==2.2.0

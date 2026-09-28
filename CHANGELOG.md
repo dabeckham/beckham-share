@@ -6,6 +6,23 @@ pre-1.0 scheme; dates are when the change reached `main`.
 ## Unreleased
 
 ### Added
+- A record of every download. Each request to a share link writes a
+  `download_events` row with the client address, user agent, referer, whether it
+  was a range request, how long the response took, and whether the client stayed
+  to the end. Asked who had downloaded a file, the app previously could not
+  answer at all.
+- The share page reports its browser fingerprint, so repeat downloads by one
+  device can be grouped even across addresses. A link fetched by something that
+  runs no browser has no fingerprint, which is recorded as such.
+
+### Fixed
+- The workspace's **Downloads** column showed the request tally, so a file
+  fetched by two people could read as six downloads. It now shows completed
+  downloads, with the request and client counts behind it. `download_count`
+  itself is unchanged and still feeds `max_downloads`, which is the right input
+  for a quota: an abandoned transfer spent the bandwidth anyway.
+
+### Added
 - Full reference documentation under `docs/`: architecture, configuration,
   operations runbook, security model, and API reference, with a docs index and
   a `CONTRIBUTING` guide.

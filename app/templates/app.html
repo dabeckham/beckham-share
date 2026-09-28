@@ -40,14 +40,14 @@
     </div>
 
     <table class="filetable">
-      <thead><tr><th>Name</th><th>Size</th><th>Expires</th><th>Downloads</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Size</th><th>Expires</th><th title="Completed downloads. The request count is higher: a browser that ranges, retries, or aborts a large file is several requests and one download.">Downloads</th><th></th></tr></thead>
       <tbody id="fileRows">
         {% for f in files %}
         <tr data-id="{{ f.id }}" data-token="{{ f.token }}" data-share="{{ f.share_url }}" data-name="{{ f.filename }}">
           <td class="cell-name"><span class="file-ico"></span>{{ f.filename }}</td>
           <td>{{ f.size_h }}</td>
           <td class="cell-exp">{% if f.revoked %}Revoked{% elif f.expires_at %}{{ f.expires_at[:10] }}{% else %}Never{% endif %}</td>
-          <td>{{ f.downloads }}</td>
+          <td title="{{ f.requests or f.downloads }} request{{ '' if (f.requests or f.downloads) == 1 else 's' }}{% if f.distinct_clients %} from {{ f.distinct_clients }} client{{ '' if f.distinct_clients == 1 else 's' }}{% endif %}">{{ f.completed_downloads }}</td>
           <td class="cell-actions">
             <button class="btn btn-ghost btn-sm act-share">Share</button>
             <button class="btn btn-ghost btn-sm act-copy">Copy link</button>

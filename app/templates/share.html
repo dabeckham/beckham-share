@@ -12,7 +12,8 @@
     <h1 class="share-name">{{ file.original_filename }}</h1>
     <p class="share-meta">{{ size_h }}{% if expires_at %} &middot; link expires {{ expires_at.strftime('%b %d, %Y %H:%M UTC') }}{% endif %}</p>
 
-    <a class="btn btn-primary btn-lg" href="{{ download_url }}">Download</a>
+    <a id="downloadBtn" class="btn btn-primary btn-lg" href="{{ download_url }}"
+       data-token="{{ token }}">Download</a>
 
     <div class="link-row tight">
       <input id="shareLink" class="link-input" readonly value="{{ this_url }}">

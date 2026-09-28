@@ -92,7 +92,47 @@ Every upload writes an `upload_events` row for review — see below.
 > boundary.** It can be spoofed; it exists to make casual abuse traceable and
 > rate-limitable, not to authenticate anyone.
 
-## 4. Data handling
+## 4. The download record
+
+Every request to `/d/{token}` writes a `download_events` row. This records
+people **Don deliberately sent a link to**, which is a different group from the
+strangers the section above is about, so it is worth being explicit about what
+is kept and why.
+
+**Why it exists.** `share_links.download_count` counts requests, and on its own
+it reads high: a browser that ranges, retries, or aborts a large file is several
+requests and one download. Measured on a 105 MB recording, the counter read 6
+against two distinct clients and roughly three complete transfers. Asked who had
+downloaded a file, the app could not answer at all, and the question was only
+answerable from a proxy log that keeps about a week.
+
+**What is recorded per request:** the client address, user agent (raw and parsed
+to browser / OS / device), `Accept-Language`, referer, whether it was a range
+request, how long the response took, and whether the client stayed to the end.
+
+**Completion is not a byte count.** Once the peer is gone the server accepts the
+application's remaining writes and returns without putting them on the wire, so
+an abandoned transfer still totals the whole file at that layer. `completed`
+therefore comes from the client disconnecting or not, and `bytes_streamed` is
+what the application wrote rather than what arrived. Throughput is reported only
+for transfers that finished, because for the others the duration is real and the
+byte count is not.
+
+**Fingerprinting the downloader.** The share page computes the same browser
+fingerprint as the upload form and reports it, so repeat downloads by one device
+can be grouped even across addresses. Two honest notes. First, this is a
+deliberate extension of a control the brief scoped to the public upload form,
+made on request. Second, it only works where a browser ran: a link fetched by
+`curl`, a mail scanner, or a link preview has no fingerprint, and that absence
+is itself a useful signal rather than a gap.
+
+**The counter keeps its meaning.** `download_count` still counts requests and
+still feeds `max_downloads`, which is the right thing for a quota: an abandoned
+transfer spent the bandwidth regardless. The workspace shows completed downloads
+instead, with the request and client counts behind it, so the number on screen
+is the number people mean.
+
+## 5. Data handling
 
 - **Filename privacy.** The original filename never appears in a URL or an
   on-disk path. Blobs are stored under `{DATA_DIR}/blobs/<uuid>`; the real name
@@ -106,7 +146,7 @@ Every upload writes an `upload_events` row for review — see below.
 - **Secrets.** `SECRET_KEY`, `DB_PASSWORD`, the OIDC client secret, and SMTP
   credentials live only in the host's `.env` (gitignored) — never in the repo.
 
-## 5. Transport & network
+## 6. Transport & network
 
 - **HTTPS everywhere.** TLS is terminated by the shared Caddy front (Let's
   Encrypt); the smoke test asserts a valid certificate after each deploy.
@@ -116,7 +156,7 @@ Every upload writes an `upload_events` row for review — see below.
   `BASE_URL`; other hostnames redirect the authenticated flow there, so a cookie
   can't be set on an unexpected origin.
 
-## 6. Threat model (summary)
+## 7. Threat model (summary)
 
 | Threat | Mitigation |
 |---|---|
@@ -126,9 +166,10 @@ Every upload writes an `upload_events` row for review — see below.
 | Public share page abused as a spam relay | Server-side email is members-only; anonymous uses `mailto:`. |
 | Oversized-upload resource exhaustion | Streaming write with an early abort + partial-file cleanup. |
 | Session forgery | Signed session cookie (`SECRET_KEY`); `Secure` + `SameSite=Lax`. |
+| No record of who received a shared file | One `download_events` row per request, with address, user agent, and whether the transfer finished. |
 | Spoofed client IP (to reset the rate limit or poison the audit trail) | Forwarded headers are honoured only from peers in `TRUSTED_PROXIES`, and the chain is read right to left so client-appended hops are discarded. Everything else is attributed to the address it arrived from. |
 
-## 7. Operational guidance
+## 8. Operational guidance
 
 - Set a strong, unique `SECRET_KEY` in production; rotating it invalidates all
   sessions.

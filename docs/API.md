@@ -23,9 +23,30 @@ actions. Returns `404` if the link is unknown or its file was deleted, `410` if
 the link has expired.
 
 ### `GET /d/{token}`
-Downloads the file bytes for a link. Increments the link's `download_count`.
-Restores the original filename via `Content-Disposition`. Returns `404` if
-missing/deleted, `410` if expired.
+Downloads the file bytes for a link. Restores the original filename via
+`Content-Disposition`. Supports `Range`. Returns `404` if missing/deleted,
+`410` if expired.
+
+**Query**
+
+| Field | Type | Notes |
+|---|---|---|
+| `fp` | string | Optional. The short fingerprint hash the share page computed, added to the link by `share.js`. Absent when no browser ran, which is recorded as such. |
+
+Increments the link's `download_count`, which counts **requests** and is what
+`max_downloads` is spent against: an abandoned transfer still cost the
+bandwidth. What actually reached the client is recorded separately, one row per
+request, in `download_events` (see [Security](SECURITY.md#4-the-download-record)).
+
+### `POST /api/shares/{token}/client`
+Accepts the browser fingerprint the share page computed for a link, posted as a
+beacon on page load so the download itself stays a plain link that right-click
+save and download managers still handle. Public, like the share page it serves.
+
+**Body** (JSON): `{"hash": "<short hash>", "components": { ... }}`. The bundle is
+capped at 4 KB and stored once per distinct client per link, not per download.
+
+`400` if no hash is supplied, `404` if the link is missing, deleted, or expired.
 
 ## Public — anonymous upload
 

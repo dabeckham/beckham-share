@@ -8,6 +8,7 @@ Access tiers
 """
 from __future__ import annotations
 
+import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -17,17 +18,17 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import fingerprint, ratelimit, storage
+from . import downloads, fingerprint, ratelimit, storage
 from .auth import clear_user, get_current_user, oauth, store_user
 from .config import settings
 from .db import get_db, init_db
 from .emailer import EmailNotConfigured, send_share_email
 from .models import File as FileModel
-from .models import ShareLink, UploadEvent, utcnow
+from .models import DownloadEvent, ShareLink, UploadEvent, utcnow
 
 log = logging.getLogger("beckham_share")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -263,6 +264,7 @@ def app_home(request: Request, db: Session = Depends(get_db)):
         .order_by(FileModel.created_at.desc())
     ).scalars().all()
     rows = [_file_row(f) for f in files]
+    _attach_download_stats(db, rows)
     return render(request, "app.html", {"files": rows, "usage": humanize_size(storage.disk_usage_bytes())})
 
 
@@ -381,8 +383,30 @@ def share_page(token: str, request: Request, db: Session = Depends(get_db)):
     })
 
 
+@app.post("/api/shares/{token}/client")
+async def record_share_client(token: str, request: Request, db: Session = Depends(get_db)):
+    """Accept the browser fingerprint the share page computed for this link.
+
+    Posted as a beacon when the page loads, so the download itself stays a
+    plain link that right-click-save and download managers still handle. A
+    visitor whose browser never runs the script simply has no entry, which is
+    worth knowing in its own right.
+    """
+    link = db.get(ShareLink, token)
+    if not link or link.file.deleted or link.is_expired:
+        raise HTTPException(404, "Not found.")
+    payload = _parse_json((await request.body()).decode("utf-8", "ignore")) or {}
+    fp_hash = str(payload.get("hash") or "")[:64]
+    if not fp_hash:
+        raise HTTPException(400, "No fingerprint supplied.")
+    components = payload.get("components")
+    fp_data = json.dumps(components, separators=(",", ":"))[:4000] if components else None
+    downloads.remember_client(request, token=token, fp_hash=fp_hash, fp_data=fp_data)
+    return {"ok": True}
+
+
 @app.get("/d/{token}")
-def download(token: str, db: Session = Depends(get_db)):
+def download(token: str, request: Request, fp: str | None = None, db: Session = Depends(get_db)):
     link = db.get(ShareLink, token)
     if not link or link.file.deleted:
         raise HTTPException(404, "Not found.")
@@ -391,18 +415,24 @@ def download(token: str, db: Session = Depends(get_db)):
     path = storage.blob_path(link.file.id)
     if not path:
         raise HTTPException(404, "File is no longer available.")
+    # Counts requests, which is what the max_downloads quota should be spent
+    # against: an aborted transfer still cost the bandwidth. What actually
+    # reached the client is recorded per request in download_events instead.
     link.download_count += 1
     db.commit()
-    return FileResponse(
+    event_id = downloads.record_request(
+        request, file_id=link.file.id, token=token, client_fp=(fp or "")[:64] or None,
+    )
+    return downloads.RecordedFileResponse(
         path,
         media_type=link.file.content_type,
         filename=link.file.original_filename,  # restores the real name on save only
+        event_id=event_id,
     )
 
 
 # ── small internal helpers ──────────────────────────────────────────────────
 def _parse_json(raw: str | None):
-    import json
     if not raw:
         return None
     try:
@@ -420,6 +450,35 @@ def _owned_link(db: Session, token: str, user) -> ShareLink:
     return link
 
 
+def _attach_download_stats(db: Session, rows: list[dict]) -> None:
+    """Fill in the real download figures for a page of rows in one query.
+
+    ``download_count`` is a request tally, so on its own it reads high: one
+    browser ranging or retrying a large file is several requests and one
+    download. These come from the per-request events instead.
+    """
+    tokens = [r["token"] for r in rows if r.get("token")]
+    if not tokens:
+        return
+    stats = db.execute(
+        select(
+            DownloadEvent.share_token,
+            func.count().label("requests"),
+            func.count().filter(DownloadEvent.completed.is_(True)).label("completed"),
+            func.count(distinct(DownloadEvent.ip)).label("clients"),
+        )
+        .where(DownloadEvent.share_token.in_(tokens))
+        .group_by(DownloadEvent.share_token)
+    ).all()
+    by_token = {row.share_token: row for row in stats}
+    for row in rows:
+        stat = by_token.get(row.get("token"))
+        if stat:
+            row["requests"] = stat.requests
+            row["completed_downloads"] = stat.completed
+            row["distinct_clients"] = stat.clients
+
+
 def _file_row(f: FileModel) -> dict:
     link = f.shares[0] if f.shares else None
     return {
@@ -434,4 +493,10 @@ def _file_row(f: FileModel) -> dict:
         "expires_at": link.expires_at.isoformat() if link and link.expires_at else None,
         "revoked": link.revoked if link else False,
         "downloads": link.download_count if link else 0,
+        # Filled in by _attach_download_stats where the events exist. Links
+        # created before download_events did have no rows, so they stay at
+        # zero rather than pretending to a history nobody recorded.
+        "requests": 0,
+        "completed_downloads": 0,
+        "distinct_clients": 0,
     }

@@ -1,4 +1,4 @@
-# Beckham Share route — add this block to the shared Caddy front's Caddyfile,
+# Beckham Share route. Add this block to the shared Caddy front's Caddyfile,
 # then reload Caddy. All three hostnames serve the app; share.beckham.ai is the
 # canonical host for share links and the authenticated flow (the app redirects
 # the other hosts there for /login and /app).
@@ -7,7 +7,39 @@
 # OIDC + the `dropbox` group on /app, so this is a plain reverse proxy. The app
 # container joins the shared proxy network, so Caddy reaches it by name. Trusted
 # LE certs via TLS-ALPN-01.
+#
+# THIS FILE IS THE SOURCE OF TRUTH for the block. Edit it here first and then
+# paste it in, never the other way round: a change made only in the live
+# Caddyfile is silently lost the next time this block is pasted over it.
 share.{$IDP_DOMAIN}, dropbox.{$IDP_DOMAIN}, buckets.{$IDP_DOMAIN} {
 	header Strict-Transport-Security "max-age=31536000"
+
+	# Bytes actually on the wire, which is the one thing the application cannot
+	# measure. Once a client disconnects mid-download the server accepts the
+	# app's remaining writes and returns without writing them, so from inside
+	# the app an abandoned transfer still totals the whole file. Caddy is the
+	# outermost layer holding the socket, so `size` here is the real figure and
+	# pairs with the app's own download_events record of who and what.
+	#
+	# A rotated file rather than stdout: stdout lands in an unrotated docker
+	# json-file, which is both unbounded on disk and short lived by volume.
+	# Cookie and Authorization are dropped explicitly. These hosts set a session
+	# cookie, and an accountability log is not a place to keep one.
+	log {
+		output file /data/access/share-access.log {
+			roll_size 50MiB
+			roll_keep 12
+			roll_keep_for 2160h
+		}
+		format filter {
+			wrap json
+			fields {
+				request>headers>Cookie delete
+				request>headers>Set-Cookie delete
+				request>headers>Authorization delete
+			}
+		}
+	}
+
 	reverse_proxy beckham-share-app:8000
 }

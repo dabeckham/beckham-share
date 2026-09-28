@@ -15,6 +15,12 @@ pre-1.0 scheme; dates are when the change reached `main`.
   device can be grouped even across addresses. A link fetched by something that
   runs no browser has no fingerprint, which is recorded as such.
 
+### Changed
+- The Caddy block for the share hosts writes a rotated JSON access log, so the
+  bytes that actually reached a client are recorded somewhere. The application
+  cannot measure that: the server accepts its writes after the peer is gone.
+  Credential headers are dropped from the log explicitly.
+
 ### Fixed
 - The workspace's **Downloads** column showed the request tally, so a file
   fetched by two people could read as six downloads. It now shows completed

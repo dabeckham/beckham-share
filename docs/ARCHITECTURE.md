@@ -157,6 +157,26 @@ files (1) ───< (N) share_links
    └──────────< (N) upload_events
 ```
 
+### `download_events`
+One row per request to `/d/{token}`, written before the file starts streaming so
+a record survives a crash mid-transfer and completed when the response ends.
+Carries the same `ip` / `user_agent` / `ua_*` shape as `upload_events`, plus
+`expected_bytes`, `bytes_streamed`, `duration_ms`, `completed`, and the range
+fields.
+
+`completed` comes from the client disconnecting or not, **not** from the byte
+count. Once the peer is gone the server accepts the application's remaining
+writes silently and returns without putting them on the wire, so an abandoned
+transfer still totals the whole file at that layer. `bytes_streamed` is
+therefore what the application wrote, and equals what arrived only when
+`completed` is true.
+
+### `download_clients`
+The fingerprint bundle behind a download, unique on (`share_token`,
+`fingerprint`), so it is stored once per distinct client rather than copied onto
+every download row. Written by the share page's beacon; a client that never runs
+the script simply has no entry.
+
 ## 5. Hostnames and the canonical host
 
 The service answers on three hostnames, but share links and the OIDC session

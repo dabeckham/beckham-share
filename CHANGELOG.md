@@ -26,6 +26,10 @@ pre-1.0 scheme; dates are when the change reached `main`.
   Credential headers are dropped from the log explicitly.
 
 ### Fixed
+- The share page's fingerprint report is bounded per link
+  (`MAX_DOWNLOAD_CLIENTS_PER_LINK`, default 50). That endpoint needs no
+  authentication, so a varying hash meant a new row per request for anyone
+  holding a valid link. The download record is unaffected by the cap.
 - Startup now adds columns the models declare and an existing table lacks.
   `create_all` only ever creates missing tables, so a new column on a live table
   was silently absent while every insert still named it. That shipped once: it

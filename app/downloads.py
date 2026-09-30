@@ -22,6 +22,7 @@ from fastapi import Request
 from fastapi.responses import FileResponse
 
 from . import fingerprint, reversedns
+from .config import settings
 from .db import SessionLocal
 from .models import DownloadClient, DownloadEvent, utcnow
 
@@ -200,6 +201,21 @@ def remember_client(request: Request, *, token: str, fp_hash: str, fp_data: str 
                 .one_or_none()
             )
             if existing is None:
+                # Unauthenticated endpoint, so it needs a ceiling: a fresh hash
+                # each time would otherwise mean a fresh row each time, for
+                # anyone holding a valid link.
+                known = (
+                    db.query(DownloadClient)
+                    .filter(DownloadClient.share_token == token)
+                    .count()
+                )
+                if known >= settings.max_download_clients_per_link:
+                    log.warning(
+                        "share link %s already has %d distinct clients; dropping the bundle "
+                        "for %s (the download itself is still recorded)",
+                        token, known, fp_hash[:12],
+                    )
+                    return
                 db.add(DownloadClient(
                     share_token=token,
                     fingerprint=fp_hash,

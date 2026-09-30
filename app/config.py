@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     # Rolling-window rate limits for anonymous uploads, keyed by IP + fingerprint.
     anon_uploads_per_hour: int = 5
     anon_uploads_per_day: int = 20
+    # How many distinct browsers a single share link will keep a fingerprint
+    # bundle for. The share page reports one without authenticating, so without
+    # a ceiling anyone holding a link could add rows indefinitely by varying the
+    # hash. Past the cap the bundle is dropped; the download itself is still
+    # recorded in full, since that does not depend on this.
+    max_download_clients_per_link: int = 50
 
     # ── Share-link expiry ────────────────────────────────────────────────
     # Allowed expiry choices (hours) offered in the UI. 0 == "never".

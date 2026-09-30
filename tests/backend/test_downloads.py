@@ -193,3 +193,62 @@ def test_workspace_reports_completed_downloads_not_the_request_count(client, mem
     page = client.get("/app")
     assert page.status_code == 200
     assert "3 requests from 1 client" in page.text
+
+
+def test_fingerprint_reports_are_bounded_per_link(client, monkeypatch):
+    # POST /api/shares/{token}/client needs no authentication, so a fresh hash
+    # would otherwise mean a fresh row, for anyone holding a valid link.
+    from app.config import settings
+    from app.models import DownloadClient
+
+    monkeypatch.setattr(settings, "max_download_clients_per_link", 3)
+    token = _shared_file(client)
+    for i in range(10):
+        body = json.dumps({"hash": f"hash{i:04d}", "components": {"n": i}})
+        assert client.post(f"/api/shares/{token}/client", content=body).status_code == 200
+
+    with SessionLocal() as s:
+        stored = s.query(DownloadClient).filter(DownloadClient.share_token == token).count()
+    assert stored == 3
+
+
+def test_a_known_client_still_updates_once_the_cap_is_reached(client, monkeypatch):
+    # The ceiling must not stop a browser we already know from being seen again.
+    from app.config import settings
+    from app.models import DownloadClient
+
+    monkeypatch.setattr(settings, "max_download_clients_per_link", 2)
+    token = _shared_file(client)
+    for h in ("aaaa", "bbbb", "cccc"):  # cccc is over the cap
+        client.post(f"/api/shares/{token}/client",
+                    content=json.dumps({"hash": h, "components": {}}))
+
+    with SessionLocal() as s:
+        first = s.query(DownloadClient).filter(
+            DownloadClient.share_token == token, DownloadClient.fingerprint == "aaaa").one()
+        before = first.last_seen
+
+    client.post(f"/api/shares/{token}/client",
+                content=json.dumps({"hash": "aaaa", "components": {"seen": "again"}}))
+
+    with SessionLocal() as s:
+        again = s.query(DownloadClient).filter(
+            DownloadClient.share_token == token, DownloadClient.fingerprint == "aaaa").one()
+        assert again.last_seen >= before
+        assert "again" in again.fingerprint_data
+
+
+def test_the_cap_does_not_stop_downloads_being_recorded(client, monkeypatch):
+    # The ceiling is on the bundle, not on accountability.
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "max_download_clients_per_link", 1)
+    token = _shared_file(client)
+    for h in ("one", "two", "three"):
+        client.post(f"/api/shares/{token}/client",
+                    content=json.dumps({"hash": h, "components": {}}))
+        client.get(f"/d/{token}?fp={h}")
+
+    events = _events(token)
+    assert len(events) == 3
+    assert {e.fingerprint for e in events} == {"one", "two", "three"}

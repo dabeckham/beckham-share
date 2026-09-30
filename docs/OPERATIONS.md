@@ -175,6 +175,41 @@ volume. Hence a file.
 | Email returns `send_failed`, logs show a connection timeout | The pinned relay address stopped answering | See "Relay address" below. |
 | Member sees "not authorized" | Not in the `dropbox` group | Group membership in Authentik; `groups` scope mapped. |
 
+### Is the access log recording real client addresses?
+
+`smoke.sh` asserts this on every deploy, so the usual answer is "it was checked
+when you last shipped". It matters because the access log is the authoritative
+byte count for downloads, and that depends on HAProxy's PROXY-protocol header
+surviving to Caddy. A chain that degraded to reporting the immediate peer would
+collapse every client to one internal address **while still producing a log full
+of plausible entries**. Nothing would contradict it.
+
+The check needs no per-request correlation: over a rolling day, at least one
+distinct non-private client address must appear. Internal rows are expected and
+ignored, because a host-side `curl` hairpins to the gateway and container-local
+requests never traverse HAProxy at all. The steady background of internet
+scanning is what makes the external count a dependable heartbeat, since it does
+not go quiet.
+
+There is **no continuous monitor**. If you want to check between deploys, run
+`smoke.sh`, or read the count directly:
+
+```sh
+docker exec idp-caddy sh -c 'cat /data/access/share-access.log' | python3 -c '
+import sys, json, time, ipaddress
+cutoff = time.time() - 86400
+seen = set()
+for line in sys.stdin:
+    line = line.strip()
+    if not line: continue
+    row = json.loads(line)
+    if row.get("ts", 0) < cutoff: continue
+    a = (row.get("request") or {}).get("client_ip")
+    if a and not ipaddress.ip_address(a).is_private:
+        seen.add(a)
+print(len(seen), "distinct external clients in 24h")'
+```
+
 ### Relay address
 
 Share-by-email connects to `mail.eigbox.net` because that is the name its

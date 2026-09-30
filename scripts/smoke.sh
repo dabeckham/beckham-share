@@ -51,4 +51,51 @@ echo "$cfg" | grep -q "grant_types=.*authorization_code" || fail "provider missi
 echo "$cfg" | grep -q "share.beckham.ai/auth/callback" || fail "provider missing share callback URI"
 echo "   $(echo "$cfg" | tr '\n' ' ')"
 
+echo ">> forwarded-client chain (the access log records real client addresses)"
+# The Caddy access log is the authoritative byte count for downloads, so its
+# client address has to be the true one. That depends on HAProxy's PROXY-protocol
+# header surviving to Caddy, and a chain that silently degrades to reporting the
+# immediate peer would collapse every client to one internal address while still
+# producing a log full of plausible-looking entries. Nothing would contradict it.
+#
+# Checked without any per-request correlation: over a rolling day, at least one
+# DISTINCT NON-PRIVATE client address must appear. Legitimate internal rows are
+# expected and ignored, because a host-side curl hairpins to the gateway and
+# container-local requests never traverse HAProxy at all. The steady background of
+# internet scanning is what makes the external count a reliable heartbeat: it does
+# not go quiet.
+ACCESS_LOG=/data/access/share-access.log
+entries=$(docker exec idp-caddy sh -c "wc -l < $ACCESS_LOG" 2>/dev/null | tr -d ' ' || echo 0)
+if [ "${entries:-0}" -lt 50 ]; then
+  echo "   skipped: log has ${entries:-0} entries, too young to judge"
+else
+  external=$(docker exec idp-caddy sh -c "cat $ACCESS_LOG" | python3 -c '
+import sys, json, time, ipaddress
+cutoff = time.time() - 86400
+seen = set()
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        row = json.loads(line)
+    except ValueError:
+        continue
+    if row.get("ts", 0) < cutoff:
+        continue
+    address = (row.get("request") or {}).get("client_ip")
+    if not address:
+        continue
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        continue
+    if not (parsed.is_private or parsed.is_loopback or parsed.is_link_local):
+        seen.add(address)
+print(len(seen))
+')
+  [ "${external:-0}" -gt 0 ] || fail "access log has no external client addresses in 24h ($entries entries); the PROXY-protocol chain may have degraded to logging the immediate peer"
+  echo "   ok ($external distinct external clients in 24h, $entries entries)"
+fi
+
 echo "SMOKE OK"

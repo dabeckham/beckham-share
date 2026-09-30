@@ -91,6 +91,20 @@ On startup the app ensures the blob directory exists and creates any missing
 tables (`init_db`), so a fresh container against the existing volumes comes back
 clean.
 
+`init_db` also adds columns the models declare and an existing table lacks,
+logging each one:
+
+```
+INFO beckham_share.db added missing column download_events.reverse_dns (VARCHAR(255))
+```
+
+There are no migrations in this project. That step exists because `create_all`
+only ever creates missing *tables*: a column added to a table that already
+exists is silently absent, and every insert naming it then fails. Watch for it
+in `docker compose logs app` after deploying a change that adds one. Anything it
+cannot do safely, a dropped column, a changed type, a `NOT NULL` column with no
+usable default, is logged at ERROR and left for you.
+
 ### Rotating secrets
 - `SECRET_KEY` — changing it invalidates all sessions (everyone re-logs in).
 - OIDC client secret — rotate in Authentik, update `.env`, `docker compose up -d app`.

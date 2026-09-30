@@ -26,6 +26,12 @@ pre-1.0 scheme; dates are when the change reached `main`.
   Credential headers are dropped from the log explicitly.
 
 ### Fixed
+- Startup now adds columns the models declare and an existing table lacks.
+  `create_all` only ever creates missing tables, so a new column on a live table
+  was silently absent while every insert still named it. That shipped once: it
+  left downloads working and stopped recording any of them, because the recording
+  path deliberately swallows its own errors. Anything that cannot be added safely
+  is logged loudly and left alone.
 - The workspace's **Downloads** column showed the request tally, so a file
   fetched by two people could read as six downloads. It now shows completed
   downloads, with the request and client counts behind it. `download_count`

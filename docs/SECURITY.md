@@ -47,6 +47,13 @@ fully buffered. Members have a separate, larger cap (`MAX_UPLOAD_BYTES`).
 - `ANON_UPLOADS_PER_HOUR` (default 5) in the last hour, and
 - `ANON_UPLOADS_PER_DAY` (default 20) in the last 24 hours.
 
+The share page's fingerprint report (`POST /api/shares/{token}/client`) is also
+unauthenticated, so it is bounded separately: a link keeps bundles for at most
+`MAX_DOWNLOAD_CLIENTS_PER_LINK` distinct browsers (default 50). Without a ceiling,
+anyone holding a valid link could add a row per request just by varying the hash.
+Past the cap the bundle is dropped and a warning logged; the download record
+itself is unaffected, because it does not depend on the report.
+
 The count is taken from the `upload_events` audit rows, keyed by **IP _or_
 fingerprint** (`OR`), so rotating just one signal does not reset the budget. The
 two keys carry different weight on purpose: the address is established by the
@@ -131,6 +138,13 @@ three independent resolvers, both an AWS address and Microsoft's mail-scanning
 ranges returned nothing. So a missing name is not a failure and not evidence of
 anything on its own. Read it together with the two signals that do survive: the
 user agent, and whether a fingerprint was reported at all.
+
+**The user agent is adversarial input.** It is recorded, and parsed into
+`ua_browser` / `ua_os` / `ua_device` for readability, but it is a string the
+client chooses and it is worth nothing as identity. Observed in this app's own
+access log within a day of turning it on: two Google Cloud addresses requesting
+`/.git/config` while presenting an iPhone and a Windows 10 user agent. Read those
+columns as "what it claimed", never as "what it is".
 
 **Fingerprinting the downloader.** The share page computes the same browser
 fingerprint as the upload form and reports it, so repeat downloads by one device

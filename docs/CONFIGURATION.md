@@ -56,6 +56,7 @@ ignored. Booleans accept `true`/`false`/`1`/`0`.
 | `ANON_MAX_UPLOAD_BYTES` | `104857600` (100 MiB) | Per-file cap for anonymous landing-page uploads. |
 | `ANON_UPLOADS_PER_HOUR` | `5` | Rolling 1-hour anonymous upload budget per client (IP or fingerprint). |
 | `ANON_UPLOADS_PER_DAY` | `20` | Rolling 24-hour anonymous upload budget per client. |
+| `MAX_DOWNLOAD_CLIENTS_PER_LINK` | `50` | How many distinct browsers one share link keeps a fingerprint bundle for. The share page reports one without authenticating, so this is the ceiling that stops a held link being used to add rows indefinitely. Downloads are recorded regardless. |
 
 See [Security](SECURITY.md) for how the limits are keyed and enforced.
 

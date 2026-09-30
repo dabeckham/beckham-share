@@ -118,6 +118,20 @@ what the application wrote rather than what arrived. Throughput is reported only
 for transfers that finished, because for the others the duration is real and the
 byte count is not.
 
+**Naming the client.** The address is resolved to a PTR record after the
+response, off the request path, and cached per address. A name separates a
+person from automation far better than a guessed location: measured, ordinary
+ISP clients resolve (`107-222-110-44.lightspeed.hstntx.sbcglobal.net`), as do
+crawlers (`crawl-66-249-66-1.googlebot.com`, `msnbot-40-77-167-1.search.msn.com`)
+and Google Cloud (`googleusercontent.com`). No geolocation database is used, so
+nothing about a recipient is sent anywhere to obtain it.
+
+The honest limitation: plenty of addresses have no PTR at all. Checked against
+three independent resolvers, both an AWS address and Microsoft's mail-scanning
+ranges returned nothing. So a missing name is not a failure and not evidence of
+anything on its own. Read it together with the two signals that do survive: the
+user agent, and whether a fingerprint was reported at all.
+
 **Fingerprinting the downloader.** The share page computes the same browser
 fingerprint as the upload form and reports it, so repeat downloads by one device
 can be grouped even across addresses. Two honest notes. First, this is a

@@ -11,6 +11,10 @@ pre-1.0 scheme; dates are when the change reached `main`.
   was a range request, how long the response took, and whether the client stayed
   to the end. Asked who had downloaded a file, the app previously could not
   answer at all.
+- Download records name the client by PTR record, resolved after the response so
+  a slow resolver never holds a transfer open. No geolocation database, so
+  nothing about a recipient is sent anywhere to obtain it. Many addresses have no
+  PTR, which is recorded as an absence rather than a failure.
 - The share page reports its browser fingerprint, so repeat downloads by one
   device can be grouped even across addresses. A link fetched by something that
   runs no browser has no fingerprint, which is recorded as such.

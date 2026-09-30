@@ -148,6 +148,11 @@ class DownloadEvent(Base):
     ua_os: Mapped[str | None] = mapped_column(String(128), nullable=True)
     ua_device: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
+    # PTR record for ``ip``, filled in after the response by a worker thread.
+    # A name identifies a mail scanner or a crawler far better than a guessed
+    # city does, and needs no database to obtain.
+    reverse_dns: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     # Only set when the share page ran its script first. A null fingerprint on
     # an otherwise complete download is itself a signal: no browser ran here.
     fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)

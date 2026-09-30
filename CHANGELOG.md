@@ -25,6 +25,12 @@ pre-1.0 scheme; dates are when the change reached `main`.
   cannot measure that: the server accepts its writes after the peer is gone.
   Credential headers are dropped from the log explicitly.
 
+### Added
+- `smoke.sh` asserts that the access log is recording real client addresses, so a
+  degraded proxy chain cannot quietly collapse every client to one internal
+  address. `deploy.sh` refuses to ship shell scripts with CRLF line endings,
+  which fail on the host in a thoroughly confusing way.
+
 ### Fixed
 - The share page's fingerprint report is bounded per link
   (`MAX_DOWNLOAD_CLIENTS_PER_LINK`, default 50). That endpoint needs no

@@ -161,8 +161,14 @@ files (1) ───< (N) share_links
 One row per request to `/d/{token}`, written before the file starts streaming so
 a record survives a crash mid-transfer and completed when the response ends.
 Carries the same `ip` / `user_agent` / `ua_*` shape as `upload_events`, plus
-`expected_bytes`, `bytes_streamed`, `duration_ms`, `completed`, and the range
-fields.
+`expected_bytes`, `bytes_streamed`, `duration_ms`, `completed`, the range
+fields, and `reverse_dns`.
+
+`reverse_dns` is filled in after the response by a small pool of worker threads,
+never on the request path: a PTR query against an unresponsive resolver can take
+seconds and no download is going to wait for one. Results are cached per
+address, and a null means no record exists rather than that the lookup was
+skipped.
 
 `completed` comes from the client disconnecting or not, **not** from the byte
 count. Once the peer is gone the server accepts the application's remaining

@@ -21,7 +21,7 @@ import anyio
 from fastapi import Request
 from fastapi.responses import FileResponse
 
-from . import fingerprint
+from . import fingerprint, reversedns
 from .db import SessionLocal
 from .models import DownloadClient, DownloadEvent, utcnow
 
@@ -65,6 +65,7 @@ def record_request(request: Request, *, file_id: str, token: str, client_fp: str
 def _finalize(event_id: str, *, bytes_streamed: int, expected_bytes: int | None,
               duration_ms: int, completed: bool) -> None:
     """Complete the row once the response has ended, however it ended."""
+    address: str | None = None
     try:
         with SessionLocal() as db:
             event = db.get(DownloadEvent, event_id)
@@ -74,9 +75,27 @@ def _finalize(event_id: str, *, bytes_streamed: int, expected_bytes: int | None,
             event.expected_bytes = expected_bytes
             event.duration_ms = duration_ms
             event.completed = completed
+            address = event.ip
             db.commit()
     except Exception as exc:  # noqa: BLE001
         log.warning("could not finalize download event %s: %s", event_id, exc)
+        return
+    # Off the request path: the response has already gone, so a slow resolver
+    # costs an enrichment field rather than somebody's download.
+    reversedns.resolve_in_background(
+        address, lambda name: _record_reverse_dns(event_id, name)
+    )
+
+
+def _record_reverse_dns(event_id: str, name: str) -> None:
+    try:
+        with SessionLocal() as db:
+            event = db.get(DownloadEvent, event_id)
+            if event is not None:
+                event.reverse_dns = name[:255]
+                db.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("could not store reverse dns for %s: %s", event_id, exc)
 
 
 class RecordedFileResponse(FileResponse):
